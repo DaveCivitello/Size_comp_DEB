@@ -3,6 +3,7 @@ library(deSolve)
 library(adaptMCMC)
 library(ggplot2)
 library(cowplot)
+library(survival)
 theme_set(theme_cowplot())
 
 setwd("C:/RData")
@@ -121,19 +122,22 @@ head(snails)
 MaxL = aggregate(Length_F ~ Snail, data=snails, FUN=max)
 Lifespan = aggregate(Alive ~ Snail, data=snails, FUN=sum)
 Cerc_total = aggregate(C_Cercs ~ Snail, data=snails, FUN=max)
+Time1 = aggregate(Time1 ~ Snail, data=snails, FUN=mean)
+Time2 = aggregate(Time2 ~ Snail, data=snails, FUN=mean)
+Event = aggregate(Event ~ Snail, data=snails, FUN=mean)
 
-snail_stats = data.frame("ID" = MaxL$Snail, "Infected" = rep(c("Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No"), times=c(16, 5, 19, 5, 12, 5, 13, 5, 13, 5, 11, 5)), "Competitor" = rep(c(0, 2, 4, 8, 13, 16), times=c(16+5, 19+5, 12+5, 13+5, 13+5, 11+5)),  "Final_Length" = MaxL$Length_F, "Lifespan" = Lifespan$Alive, "Total Cercs" = Cerc_total$C_Cercs, "Rate Cercs" = Cerc_total$C_Cercs/Lifespan$Alive)
+snail_stats = data.frame("ID" = MaxL$Snail, "Infected" = rep(c("Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No"), times=c(16, 5, 19, 5, 12, 5, 13, 5, 13, 5, 11, 5)), "Competitor" = rep(c(0, 2, 4, 8, 13, 16), times=c(16+5, 19+5, 12+5, 13+5, 13+5, 11+5)),  "Final_Length" = MaxL$Length_F, "Lifespan" = Lifespan$Alive, "Time1" = Time1$Time1, "Time2" = Time2$Time2, "Event" = Event$Event, "Total Cercs" = Cerc_total$C_Cercs, "Rate Cercs" = Cerc_total$C_Cercs/Lifespan$Alive)
 head(snail_stats)
 
-m1 = lm(Final_Length ~ Competitor*Infected + Lifespan, data=snail_stats)
+m1 = lm(Final_Length ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
 summary(m1) # Sig main effect of competitor size, while controlling for lifespan
 plot(m1)
 
-# m2 = lm(log(Total.Cercs) ~ Competitor + Lifespan, data=subset(snail_stats, Infected == "Yes"))
-# summary(m2)
-
 m3 = lm(log(Rate.Cercs) ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
 summary(m3)
+
+m4 = survreg(Surv(time=Time1, time2=Time2, event=Event, type="interval") ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
+summary(m4)
 
 plot((Rate.Cercs) ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
 cerc_means = aggregate(Rate.Cercs ~ Competitor, FUN=mean, data=subset(snail_stats, Infected == "Yes"))
