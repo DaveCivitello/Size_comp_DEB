@@ -10,7 +10,6 @@ setwd("C:/RData")
 
 
 # Getting DEB parameters
-#m = readRDS("Full_Fitting_Size.Rda")
 m = readRDS("FullStarve_SR_adaptMCMC3.Rda")
 
 params = m$samples[which.max(m$log.p),]
@@ -60,106 +59,111 @@ solve.DEBs(params, inits, 112)
 
 summarize.SW = function(F_size = 4, C_size = 4, supply=10, parms=params){
   initsI = c(F = 0, L=F_size, e=0.8, D = D_L(F_size, parms["DR"]), RH = 0, P = 2.85e-5, RP = 0, DAM=0, HAZ=0, LC=C_size, eC=0.8, DC=D_L(C_size, params["DR"]), RHC=0, DAMC=0, HAZC=0)
-  #initsU = c(F = 0, L=F_Size, e=0.8, D = D_L(F_Size, parms["DR"]), RH = 0, P = 0, RP = 0, DAM=0, HAZ=0, LC=C_Size, eC=0.8, DC=D_L(C_Size, params["DR"]), RHC=0, DAMC=0, HAZC=0)
-  
+
   parms["supply"] = supply; inits["F"] = supply
 
   predsI = solve.DEBs(parms, initsI, 112)
   if(attributes(predsI)$istate[1] != 2){print(c(parms, F_size, C_size))}
-  #predsU = solve.DEBs(parms, initsU, 1000)
-  
+
   predsI = data.frame(predsI)
   # expected parasite reproduction
-  #deathsU = predsU$Survival[1:1000] - predsU$Survival[2:1001]
   deathsI = c(predsI$Survival[1:112] - predsI$Survival[2:113], predsI$Survival[113])
   # Daily
   Cercs = sum(deathsI * predsI$RP[1:113]/(4e-5 * (1:113) ))*7 # *7 to convert from shedding per day to per week, which is form of data
-  # Lifetime
-  #Cercs = sum(deathsI * predsI$RP[2:1001]/(4e-5))
-  
+
   # Max gigantism
   Final_Length = sum(deathsI*predsI$LG[1:113])
   
   # Castration phenotype
-  #Inf_Eggs = sum(deathsI * predsI$RH[2:1001]/0.015)
-  #Inf_Eggs = which.max(predsI$RH)
   egglaying = predsI$RH[2:113] - predsI$RH[1:112]
   Inf_Eggs = max(which(egglaying > 0.015))
   
   # Expected lifespan
-  median.lifespan = sum(predsI$Survival)#hich.min(abs(predsI$Survival - 0.5))
+  median.lifespan = sum(predsI$Survival)
   
   return(c(Cercs, Final_Length, Inf_Eggs, median.lifespan))
 }
 
 summarize.SW(F_size=4,  C_size = 0, supply=10)
 
-F_vals = 4 #seq(from=2, to=16, by=0.1)
+F_vals = 4 
 C_vals = seq(from=0, to=16, by=0.25)
 F.vec = rep(F_vals, times = length(C_vals))
 C.vec = rep(C_vals, each = length(F_vals))
 
 
-output = mapply(summarize.SW, F_size=F.vec, C_size=C.vec, supply=21.42/7)
+# Get a priori model predictions using the fits from Civitello et al. 2020 and the
+# Experimental conditions and duration from this experiment
+output = mapply(summarize.SW, F_size=F.vec, C_size=C.vec, supply=21.42/7) # Supply rate corresponds to this exp
 output2 = data.frame(t(output))
 colnames(output2) = c("Cercariae", "Final_Length", "I_Eggs", "Lifespan")
 output2[,("F_size")] = F.vec
 output2[,"C_size"] = C.vec
 
-#write.csv(output2, file = "SizeCompPreds10.csv")
 
-#### Now collect the data ###
-
-# Basic stats for Rachel's paper
-
-
-# Get infected and uninfected snails
+### Basic stats for Rachel's paper
 setwd("C:/RData")
 snails = read.csv("Size_comp_LT.csv")
 
-head(snails)
-
+# Data sheet contains time series for each snail, so these functions extract cumulative totals for each snail
 MaxL = aggregate(Length_F ~ Snail, data=snails, FUN=max)
 Lifespan = aggregate(Alive ~ Snail, data=snails, FUN=sum)
 Cerc_total = aggregate(C_Cercs ~ Snail, data=snails, FUN=max)
+# These are needed for the interval-censored accelerated failure time model
 Time1 = aggregate(Time1 ~ Snail, data=snails, FUN=mean)
 Time2 = aggregate(Time2 ~ Snail, data=snails, FUN=mean)
 Event = aggregate(Event ~ Snail, data=snails, FUN=mean)
 
-snail_stats = data.frame("ID" = MaxL$Snail, "Infected" = rep(c("Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No"), times=c(16, 5, 19, 5, 12, 5, 13, 5, 13, 5, 11, 5)), "Competitor" = rep(c(0, 2, 4, 8, 13, 16), times=c(16+5, 19+5, 12+5, 13+5, 13+5, 11+5)),  "Final_Length" = MaxL$Length_F, "Lifespan" = Lifespan$Alive, "Time1" = Time1$Time1, "Time2" = Time2$Time2, "Event" = Event$Event, "Total Cercs" = Cerc_total$C_Cercs, "Rate Cercs" = Cerc_total$C_Cercs/Lifespan$Alive)
-head(snail_stats)
+# Collect all of this processed data into a single data frame
+snail_stats = data.frame("ID" = MaxL$Snail, 
+                         "Infected" = rep(c("Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No", "Yes", "No"), times=c(16, 5, 19, 5, 12, 5, 13, 5, 13, 5, 11, 5)), 
+                         "Competitor" = rep(c(0, 2, 4, 8, 13, 16), times=c(16+5, 19+5, 12+5, 13+5, 13+5, 11+5)),  
+                         "Final_Length" = MaxL$Length_F, "Lifespan" = Lifespan$Alive, 
+                         "Time1" = Time1$Time1, 
+                         "Time2" = Time2$Time2, 
+                         "Event" = Event$Event, 
+                         "Total Cercs" = Cerc_total$C_Cercs, 
+                         "Rate Cercs" = Cerc_total$C_Cercs/Lifespan$Alive)
 
-m1 = lm(Final_Length ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
-summary(m1) # Sig main effect of competitor size, while controlling for lifespan
-plot(m1)
+# Analysis for Panel A, effect of competitor size on cercariae per shed?
+# Log transformed to deal w/ heteroskedaskticity
+mA = lm(log(Rate.Cercs) ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
+summary(mA) # Yes
 
-m3 = lm(log(Rate.Cercs) ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
-summary(m3)
+# Analysis for Panel B, effect of competitor size on final length?
+mB = lm(Final_Length ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
+summary(mB) # Yes
 
-m4 = survreg(Surv(time=Time1, time2=Time2, event=Event, type="interval") ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
-summary(m4)
+# Analysis for Panel C, effect of competitor size on lifespan?
+# Accelerated failure time model with Weibull distribution and interval censored observations
+mC = survreg(Surv(time=Time1, time2=Time2, event=Event, type="interval") ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
+summary(mC) # Yes
 
-plot((Rate.Cercs) ~ Competitor, data=subset(snail_stats, Infected == "Yes"))
-cerc_means = aggregate(Rate.Cercs ~ Competitor, FUN=mean, data=subset(snail_stats, Infected == "Yes"))
 
+### Collecting treatment means and SEs for ggplotting
 SEM = function(x){
   sd(x)/sqrt(length(na.omit(x)))
 }
 
+# Cercs
+cerc_means = aggregate(Rate.Cercs ~ Competitor, FUN=mean, data=subset(snail_stats, Infected == "Yes"))
 cerc_ses = aggregate(Rate.Cercs ~ Competitor, FUN=SEM, data=subset(snail_stats, Infected == "Yes"))
-
 cerc_means = cbind(cerc_means, "SE" = cerc_ses$Rate.Cercs)
 cerc_means
 
+# Lengths
+L_means = aggregate(Final_Length ~ Competitor, FUN=mean, data=subset(snail_stats, Infected == "Yes"))
+L_ses = aggregate(Final_Length ~ Competitor, FUN=SEM, data=subset(snail_stats, Infected == "Yes"))
+L_means = cbind(L_means, "SE" = L_ses$Final_Length)
 
+# Survival
 S_means = aggregate(Lifespan ~ Competitor, FUN=mean, data=subset(snail_stats, Infected == "Yes"))
 S_ses = aggregate(Lifespan ~ Competitor, FUN=SEM, data=subset(snail_stats, Infected == "Yes"))
-
 S_means = cbind(S_means, "SE" = S_ses$Lifespan)
 S_means[,c("Lifespan", "SE")] = S_means[,c("Lifespan", "SE")]*7
 
-###########
-p1 = ggplot(data=output2, aes(x=C_size, y=Cercariae)) +
+### ggplotting
+pA = ggplot(data=output2, aes(x=C_size, y=Cercariae)) +
   theme(plot.margin = unit(c(0, 0.25, 0.75, 0.5), "cm")) + 
   theme(legend.position="none",
         axis.ticks.length = unit(-1.5, "mm"),
@@ -170,16 +174,13 @@ p1 = ggplot(data=output2, aes(x=C_size, y=Cercariae)) +
   geom_linerange(data=cerc_means, inherit.aes=F, aes(x=Competitor, ymin=Rate.Cercs - SE, ymax=Rate.Cercs + SE))
 
 
-p1
-
-L_means = aggregate(Final_Length ~ Competitor, FUN=mean, data=subset(snail_stats, Infected == "Yes"))
-L_ses = aggregate(Final_Length ~ Competitor, FUN=SEM, data=subset(snail_stats, Infected == "Yes"))
-
-L_means = cbind(L_means, "SE" = L_ses$Final_Length)
+pA
 
 
 
-p2 = ggplot(data=output2, aes(x=C_size, y=Final_Length)) +
+
+
+pB = ggplot(data=output2, aes(x=C_size, y=Final_Length)) +
   theme(plot.margin = unit(c(0, 0.25, 0.75, 0.5), "cm")) + 
   theme(legend.position="none",
         axis.ticks.length = unit(-1.5, "mm"),
@@ -191,7 +192,7 @@ p2 = ggplot(data=output2, aes(x=C_size, y=Final_Length)) +
 
 
 
-p3 = ggplot(data=output2, aes(x=C_size, y=Lifespan)) +
+pC = ggplot(data=output2, aes(x=C_size, y=Lifespan)) +
   theme(plot.margin = unit(c(0, 0.25, 0.75, 0.5), "cm")) + 
   theme(legend.position="none",
         axis.ticks.length = unit(-1.5, "mm"),
@@ -203,23 +204,26 @@ p3 = ggplot(data=output2, aes(x=C_size, y=Lifespan)) +
 
 
 
-Fig1 = plot_grid(p1, p2, p3, align="v", ncol=1, nrow=3, axis="rltb", scale=1) +
+Fig1 = plot_grid(pA, pB, pC, align="v", ncol=1, nrow=3, axis="rltb", scale=1) +
   # y-axis labels
   draw_label("Daily cercarial production rate", x=0.03, y=0.85, angle=90, size=10) +
   draw_label("Length at death, mm", x=0.03, y=0.51, angle=90, size=10) +
-  draw_label("Expected survival, days", x=0.03, y=0.2, angle=90, size=10) +
+  draw_label("Host survival, days", x=0.03, y=0.2, angle=90, size=10) +
   # x-axis labels
   draw_label("Competitor Size, mm", x = 0.55, y = 0.02, size=10) +
   # panel labels
   draw_label("A", x = 0.26, y = 0.985, size=10) + 
+  draw_label("Competitor size:", x = 0.75, y = 0.95, size=8, hjust=0.5) +
+  draw_label(expression(paste("P < ", 10^-12)), x = 0.75, y = 0.93, size=8, hjust=0.5) +
+  draw_label(expression(paste(R^2, " = 0.46")), x = 0.75, y = 0.91, size=8, hjust=0.5) +
   draw_label("B", x = 0.26, y = 0.65, size=10) +
-  draw_label("C", x = 0.26, y = 0.32, size=10) #+
-  # legend
-  # draw_label("Period, days", x=0.35, y=0.8, size=8) +
-  # draw_line(x = c(0.3, 0.375), y=c(0.78, 0.78), linetype="solid") + draw_label("1", x = 0.39, y=0.78, size=8, hjust=0) +
-  # draw_line(x = c(0.3, 0.375), y=c(0.76, 0.76), linetype="dashed") + draw_label("7", x = 0.39, y=0.76, size=8, hjust=0) +
-  # draw_line(x = c(0.3, 0.375), y=c(0.74, 0.74), linetype="dotted") + draw_label("28", x = 0.39, y=0.74, size=8, hjust=0) +
-  # draw_line(x = c(0.3, 0.375), y=c(0.72, 0.72), linetype="dotdash") + draw_label("56", x = 0.39, y=0.72, size=8, hjust=0) 
+  draw_label("Competitor size:", x = 0.75, y = 0.45, size=8, hjust=0.5) +
+  draw_label(expression(paste("P < ", 10^-12)), x = 0.75, y = 0.43, size=8, hjust=0.5) +
+  draw_label(expression(paste(R^2, " = 0.46")), x = 0.75, y = 0.41, size=8, hjust=0.5) +
+  draw_label("C", x = 0.26, y = 0.32, size=10) +
+  draw_label("Competitor size:", x = 0.75, y = 0.16, size=8, hjust=0.5) +
+  draw_label("P = 0.003", x = 0.75, y = 0.14, size=8, hjust=0.5)
+
 save_plot("Fig1_SizeCompPreds.png", Fig1, ncol=1, nrow=3, base_height=2, base_aspect_ratio = 1.05, dpi=600, units="in")
 
 Fig1
