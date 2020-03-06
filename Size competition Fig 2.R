@@ -7,7 +7,7 @@ setwd("C:/RData")
 thin.int = 1000
 m = readRDS("Full_Fitting_Size_AR1.Rda") #$samples[seq(from=50001, to=200000, by=thin.int),c(1:25)]
 params = m$samples[which.max(m$log.p),]
-#signif(params, 3)
+
 
 # compile my model from C definition
 dyn.unload("SizeCompModel_Shrink.dll") # unload dll
@@ -27,7 +27,7 @@ experiment.events = function(initial.food){
   out[order(out$time),]
 }
 
-experiment.events(10.76)
+
 
 #Solves all deterministic DEB skeletons
 solve.DEB<-function(params, inits, duration, events){
@@ -61,9 +61,48 @@ solve.DEBs<-function(parms, duration){
   result
 }
 
-predsI = solve.DEBs(params, 133)
-predsI["Color"] = rep(c("black", "brown", "purple", "blue", "green", "red"), each=16)
 
+L.matrix = matrix(,nrow=0, ncol=16*6)
+LC.matrix = matrix(,nrow=0, ncol=16*6)
+C.matrix = matrix(,nrow=0, ncol=16*6)
+E.matrix = matrix(,nrow=0, ncol=16*6)
+S.matrix = matrix(,nrow=0, ncol=16*6)
+
+
+for(i in 1:length(m$samples[,1])){
+  pars = as.vector(data.frame(m$samples)[i,])
+  results = solve.DEBs(pars, 133)
+  L.matrix = rbind(L.matrix, results$LG)
+  LC.matrix = rbind(LC.matrix, results$LGC)
+  C.matrix = rbind(C.matrix, results$RP)
+  E.matrix = rbind(E.matrix, results$RH)
+  S.matrix = rbind(S.matrix, results$Survival)
+  print(i)
+}
+
+Hi.L = apply(L.matrix, 2, quantile, 0.995)
+Med.L = apply(L.matrix, 2, quantile, probs=0.5)
+Lo.L = apply(L.matrix, 2, quantile, probs=0.005)
+
+Hi.LC = apply(LC.matrix, 2, quantile, 0.995)
+Med.LC = apply(LC.matrix, 2, quantile, probs=0.5)
+Lo.LC = apply(LC.matrix, 2, quantile, probs=0.005)
+
+Hi.C = apply(C.matrix, 2, quantile, 0.995)
+Med.C = apply(C.matrix, 2, quantile, probs=0.5)
+Lo.C = apply(C.matrix, 2, quantile, probs=0.005)
+
+Hi.E = apply(E.matrix, 2, quantile, 0.995)
+Med.E = apply(E.matrix, 2, quantile, probs=0.5)
+Lo.E = apply(E.matrix, 2, quantile, probs=0.005)
+
+Hi.S = apply(S.matrix, 2, quantile, 0.995)
+Med.S = apply(S.matrix, 2, quantile, probs=0.5)
+Lo.S = apply(S.matrix, 2, quantile, probs=0.005)
+
+output = data.frame("time" = rep((4:19)*7, times=6), "L_H" = Hi.L, "L_L" = Lo.L, "LC_H" = Hi.LC, "LC_L" = Lo.LC, "C_H"=Hi.C, "C_L"=Lo.C, "E_H"=Hi.E, "E_L"=Lo.E, "S_H"=Hi.S, "S_L"=Lo.S, "L"=Med.L, "LC"=Med.LC, "E"=Med.E, "C"=Med.C, "S"=Med.S, "Color"=rep(c("red", "green", "blue", "purple", "brown", "black"), each=16))
+head(output)
+write.csv(output, "SizeComp_fit_INF.csv")
 
 # ### Uninfected predictions
 solve.DEBs<-function(parms, duration){
@@ -87,9 +126,47 @@ solve.DEBs<-function(parms, duration){
   result
 }
 
-predsU = solve.DEBs(params, 133)
-predsU["Color"] = rep(c("black", "brown", "purple", "blue", "green", "red"), each=16)
+L.matrix = matrix(,nrow=0, ncol=16*6)
+LC.matrix = matrix(,nrow=0, ncol=16*6)
+C.matrix = matrix(,nrow=0, ncol=16*6)
+E.matrix = matrix(,nrow=0, ncol=16*6)
+S.matrix = matrix(,nrow=0, ncol=16*6)
 
+
+for(i in 1:length(m$samples[,1])){
+  pars = as.vector(data.frame(m$samples)[i,])
+  results = solve.DEBs(pars, 133)
+  L.matrix = rbind(L.matrix, results$LG)
+  LC.matrix = rbind(LC.matrix, results$LGC)
+  C.matrix = rbind(C.matrix, results$RP)
+  E.matrix = rbind(E.matrix, results$RH)
+  S.matrix = rbind(S.matrix, results$Survival)
+  print(i)
+}
+
+Hi.L = apply(L.matrix, 2, quantile, 0.995)
+Med.L = apply(L.matrix, 2, quantile, probs=0.5)
+Lo.L = apply(L.matrix, 2, quantile, probs=0.005)
+
+Hi.LC = apply(LC.matrix, 2, quantile, 0.995)
+Med.LC = apply(LC.matrix, 2, quantile, probs=0.5)
+Lo.LC = apply(LC.matrix, 2, quantile, probs=0.005)
+
+Hi.C = apply(C.matrix, 2, quantile, 0.995)
+Med.C = apply(C.matrix, 2, quantile, probs=0.5)
+Lo.C = apply(C.matrix, 2, quantile, probs=0.005)
+
+Hi.E = apply(E.matrix, 2, quantile, 0.995)
+Med.E = apply(E.matrix, 2, quantile, probs=0.5)
+Lo.E = apply(E.matrix, 2, quantile, probs=0.005)
+
+Hi.S = apply(S.matrix, 2, quantile, 0.995)
+Med.S = apply(S.matrix, 2, quantile, probs=0.5)
+Lo.S = apply(S.matrix, 2, quantile, probs=0.005)
+
+output2 = data.frame("time" = rep((4:19)*7, times=6), "L_H" = Hi.L, "L_L" = Lo.L, "LC_H" = Hi.LC, "LC_L" = Lo.LC, "C_H"=Hi.C, "C_L"=Lo.C, "E_H"=Hi.E, "E_L"=Lo.E, "S_H"=Hi.S, "S_L"=Lo.S, "L"=Med.L, "LC"=Med.LC, "E"=Med.E, "C"=Med.C, "S"=Med.S, "Color"=rep(c("red", "green", "blue", "purple", "brown", "black"), each=16))
+head(output2)
+write.csv(output2, "SizeComp_fit_UN.csv")
 
 ####### ggplotting ######
 
@@ -107,22 +184,25 @@ head(snails)
 
 # Simple function to calculate Standard Errors
 SEM = function(x){
-  sd(x)/sqrt(length(x))
+  sd(x)/sqrt(na.omit(length(x)))
 }
 
 # Summarize all data
 snail_mean_Ls = aggregate(Length_F ~ Week*Competitor_Size*Exposure, data=snails, FUN=mean, drop=F)
 snail_SE_Ls = aggregate(Length_F ~  Week*Competitor_Size*Exposure, data=snails, FUN=SEM, drop=F)
 
-compt_mean_Ls = aggregate(Length_C ~ Week*Competitor_Size*Exposure, data=snails, FUN=mean, drop=F)
-compt_SE_Ls = aggregate(Length_C ~  Week*Competitor_Size*Exposure, data=snails, FUN=SEM, drop=F)
+# Have to deal with missing competitor lengths for snails with no competitors
+compt_mean_Ls = aggregate(Length_C ~ Week*Competitor_Size*Exposure, data=snails, FUN=mean, drop=F)[,"Length_C"]
+compt_mean_Ls = c(rep(NA, times=16), compt_mean_Ls[1:80], rep(NA, times=16), compt_mean_Ls[81:160])
+compt_SE_Ls = aggregate(Length_C ~  Week*Competitor_Size*Exposure, data=snails, FUN=SEM, drop=F)[,"Length_C"]
+compt_SE_Ls = c(rep(NA, times=16), compt_SE_Ls[1:80], rep(NA, times=16), compt_SE_Ls[81:160])
 
 snail_mean_Es = aggregate(log10(C_Eggs+1) ~   Week*Competitor_Size*Exposure, data=snails, FUN=mean, drop=F)
 colnames(snail_mean_Es)[4] = "C_Eggs"
 snail_SE_Es = aggregate(log10(C_Eggs+1) ~   Week*Competitor_Size*Exposure, data=snails, FUN=SEM, drop=F)
 colnames(snail_SE_Es)[4] = "C_Eggs"
 
-snail_summary = cbind(snail_mean_Ls, "Length_F_SE" = snail_SE_Ls$Length)
+snail_summary = cbind(snail_mean_Ls, "Length_F_SE" = snail_SE_Ls$Length, "Length_C" = compt_mean_Ls, "Length_C_SE" = compt_SE_Ls)
 head(snail_summary)
 
 snail_mean_Ws = aggregate(log10(1+C_Cercs) ~  Week*Competitor_Size, data=subset(snails, Exposure=="Y"), FUN=mean, drop=F)
@@ -138,10 +218,7 @@ comp_Ls = aggregate(Length_C ~ Competitor_Size, data=subset(snails, Week==0), FU
 comp_SE_Ls = aggregate(Length_C ~  Competitor_Size, data=subset(snails, Week==0), FUN=SEM, drop=F)
 comp_lengths = cbind(comp_Ls, "Length_C_SE" = comp_SE_Ls$Length_C)
 
-anova(lm(Length_C ~ Competitor_Size*Exposure, data=subset(snails, Week==0)))
-
 #### build the summarized dataframe
-snail_summary = cbind(snail_mean_Ls,"Length_F_SE" = snail_SE_Ls$Length)
 snail_summary = cbind(snail_summary,"C_Eggs" = snail_mean_Es$C_Eggs)
 snail_summary = cbind(snail_summary,"C_Eggs_SE" = snail_SE_Es$C_Eggs)
 snail_summary = cbind(snail_summary, "Survival" = snail_mean_Alive$Alive)
@@ -153,20 +230,16 @@ snail_summary.Inf = cbind(snail_summary.Inf, "Color" = c(rep(c("black", "brown",
 snail_summary.Un = subset(snail_summary, Exposure == "N")
 snail_summary.Un = cbind(snail_summary.Un, "Color" = c(rep(c("black", "brown", "purple", "blue", "green", "red"), each=16)))
 
-# # Lining up predictions
-snail_summary.Inf = cbind(snail_summary.Inf, subset(predsI, select=c("LG", "RP", "LGC", "Rtotal", "Survival")))
-snail_summary.Inf[,13] = log10(1+snail_summary.Inf[,13]/4e-5)
-snail_summary.Inf[,15] = log10(1+snail_summary.Inf[,15]/0.015)
-colnames(snail_summary.Inf)[16] = "SurvProb"
+# Lining up predictions
+predictions = read.csv("SizeComp_fit_INF.csv")
+snail_summary.Inf = cbind(snail_summary.Inf, subset(predictions, select=c("L_H", "L_L", "LC_H", "LC_L", "C_H", "C_L", "E_H", "E_L", "S_H", "S_L", "L", "LC", "C", "E", "S")))
+snail_summary.Inf[,c(18:19, 26)] = log10(1+snail_summary.Inf[,c(18:19, 26)]/4e-5)
+snail_summary.Inf[,c(20:21, 27)] = log10(1+snail_summary.Inf[,c(20:21, 27)]/0.015)
 
-snail_summary.Inf = cbind(snail_summary.Inf, "Length_C" = c(rep(NA, times=16), compt_mean_Ls$Length_C[81:160]))
-snail_summary.Inf = cbind(snail_summary.Inf,  "Length_C_SE" = c(rep(NA, times=16), compt_SE_Ls$Length_C[81:160]))
-# 
-snail_summary.Un = cbind(snail_summary.Un, subset(predsU, select=c("LG", "RP", "LGC", "Rtotal", "Survival")))
-snail_summary.Un[,13] = log10(1+snail_summary.Un[,13]/0.015)
-colnames(snail_summary.Un)[14] = "SurvProb"
-snail_summary.Un = cbind(snail_summary.Un, "Length_C" = c(rep(NA, times=16), compt_mean_Ls$Length_C[1:80]))
-snail_summary.Un = cbind(snail_summary.Un, "Length_C_SE" = c(rep(NA, times=16), compt_SE_Ls$Length_C[1:80]))
+predictions = read.csv("SizeComp_fit_UN.csv")
+snail_summary.Un = cbind(snail_summary.Un, subset(predictions, select=c("L_H", "L_L", "LC_H", "LC_L", "E_H", "E_L", "S_H", "S_L", "L", "LC", "E", "S")))
+snail_summary.Un[,c(16:17, 22)] = log10(1+snail_summary.Un[,c(16:17, 22)]/0.015)
+
 
 # Make plots 
 p1 = 
@@ -178,10 +251,10 @@ p1 =
   xlim(c(0, 16)) +   labs(x="", y="") + 
   geom_point(size=1) + 
   geom_linerange(aes(ymin=Length_F-Length_F_SE, ymax=Length_F + Length_F_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p1a = p1 +
-  geom_line(aes(x=Week, y=LG, group=Color, color=Color))
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  geom_ribbon(aes(x=Week, ymin=L_L, ymax=L_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=L, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 
 p2 = ggplot(data=subset(snail_summary.Un, !is.nan(Length_F) & is.finite(Length_F)), aes(x=Week, y=Length_F, group=Color, color=factor(Color))) +
@@ -191,11 +264,11 @@ p2 = ggplot(data=subset(snail_summary.Un, !is.nan(Length_F) & is.finite(Length_F
   scale_y_continuous(breaks=c(0, 5, 10, 15), limits=c(0,20)) +
   xlim(c(0, 16)) +  labs(x="", y="") + 
   geom_point(size=1) + 
-  geom_linerange(aes(ymin=Length_F-Length_F_SE, ymax=Length_F+ Length_F_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p2a = p2 +
-  geom_line(aes(x=Week, y=LG, group=Color, color=Color))
+  geom_linerange(aes(ymin=Length_F-Length_F_SE, ymax=Length_F + Length_F_SE)) +
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  geom_ribbon(aes(x=Week, ymin=L_L, ymax=L_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=L, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p3 =   ggplot(data=subset(snail_summary.Inf, !is.nan(Length_C) & is.finite(Length_C)), aes(x=Week, y=Length_C, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))  +  theme(axis.text = element_text(size=10)) + 
@@ -204,12 +277,11 @@ p3 =   ggplot(data=subset(snail_summary.Inf, !is.nan(Length_C) & is.finite(Lengt
   scale_y_continuous(breaks=c(5, 10, 15), limits=c(0,20)) +
   xlim(c(0, 16)) +   labs(x="", y="") + 
   geom_point(size=1) + 
-  geom_linerange(aes(ymin=Length_C-Length_F_SE, ymax=Length_C + Length_C_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p3a = p3  +
-  geom_line(aes(x=Week, y=LGC, group=Color, color=Color))
-
+  geom_linerange(aes(ymin=Length_C-Length_C_SE, ymax=Length_C + Length_C_SE)) +
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  geom_ribbon(aes(x=Week, ymin=LC_L, ymax=LC_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=LC, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p4 = ggplot(data=subset(snail_summary.Un, !is.nan(Length_C) & is.finite(Length_C)), aes(x=Week, y=Length_C, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))  +  theme(axis.text = element_text(size=10)) + 
@@ -218,11 +290,11 @@ p4 = ggplot(data=subset(snail_summary.Un, !is.nan(Length_C) & is.finite(Length_C
   scale_y_continuous(breaks=c(5, 10, 15), limits=c(0,20)) +
   xlim(c(0, 16)) +   labs(x="", y="") + 
   geom_point(size=1) + 
-  geom_linerange(aes(ymin=Length_C-Length_F_SE, ymax=Length_C + Length_C_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p4a = p4 +
-  geom_line(aes(x=Week, y=LGC, group=Color, color=Color))
+  geom_linerange(aes(ymin=Length_C-Length_C_SE, ymax=Length_C + Length_C_SE)) +
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  geom_ribbon(aes(x=Week, ymin=LC_L, ymax=LC_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=LC, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p5 = ggplot(subset(snail_summary.Inf, Week >= 4), aes(x=Week, y=Survival, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))   +  theme(axis.text = element_text(size=10)) +
@@ -231,11 +303,10 @@ p5 = ggplot(subset(snail_summary.Inf, Week >= 4), aes(x=Week, y=Survival, group=
         axis.text.y = element_text(margin = margin(r=6)), axis.title.x= element_blank(), axis.title.y=element_blank()) +
   xlim(c(0, 16)) + labs(x="", y="") +
   geom_point(size=1) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p5a = p5  +
-  geom_line(aes(x=Week, y=SurvProb, group=Color, color=Color))
-
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))+
+  geom_ribbon(aes(x=Week, ymin=S_L, ymax=S_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=S, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p6 = ggplot(snail_summary.Un, aes(x=Week, y=Survival, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))   +  theme(axis.text = element_text(size=10)) +
@@ -245,10 +316,10 @@ p6 = ggplot(snail_summary.Un, aes(x=Week, y=Survival, group=Color, color=factor(
         axis.title.x= element_blank(), axis.title.y=element_blank()) +
   xlim(c(0, 16)) + labs(x="", y=NULL) +
   geom_point(size=1) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p6a = p6  +
-  geom_line(aes(x=Week, y=SurvProb, group=Color, color=Color))
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))+
+  geom_ribbon(aes(x=Week, ymin=S_L, ymax=S_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=S, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p7 = ggplot(data=subset(snail_summary.Inf, !is.nan(C_Worms) & is.finite(C_Worms)), aes(x=Week, y=C_Worms, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm")) +  theme(axis.text = element_text(size=10)) +
@@ -257,20 +328,20 @@ p7 = ggplot(data=subset(snail_summary.Inf, !is.nan(C_Worms) & is.finite(C_Worms)
         axis.title.x= element_blank(), axis.title.y=element_blank()) +
   xlim(c(0, 16)) +  labs(x="", y="") + 
   geom_point(size=1) + 
-  geom_linerange(aes(ymin=C_Worms-C_Worms_SE, ymax=C_Worms+ C_Worms_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"))
-
-p7a = p7 +
-  geom_line(aes(x=Week, y=RP, group=Color, color=Color))
+  geom_linerange(aes(ymin=C_Worms-C_Worms_SE, ymax=C_Worms+ C_Worms_SE)) + 
+  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  geom_ribbon(aes(x=Week, ymin=C_L, ymax=C_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
+  geom_line(aes(x=Week, y=C, group=Color, color=Color)) +
+  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 spacer = ggplot(data=snail_summary.Inf, aes(x=Week, y=C_Worms)) +
   geom_blank() + theme_void()
 
 Fig1 = plot_grid(spacer, spacer, spacer,spacer,
-                 spacer, p1a, p2a, spacer,
-                 spacer, p3a, p4a, spacer,
-                 spacer, p5a, p6a, spacer,
-                 spacer, p7a, spacer,spacer,
+                 spacer, p1, p2, spacer,
+                 spacer, p3, p4, spacer,
+                 spacer, p5, p6, spacer,
+                 spacer, p7, spacer,spacer,
                  spacer, spacer, spacer,spacer,
                  align="hv", ncol=4, nrow=6, rel_widths=c(0.15, 1, 1, 0.05), rel_heights=c(0.1, 1, 1, 1, 1, 0.1), axis="rltb", scale=1) +
   # Column labels
