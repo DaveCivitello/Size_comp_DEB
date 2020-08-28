@@ -173,13 +173,6 @@ pA = ggplot(data=output2, aes(x=C_size, y=Cercariae)) +
   geom_point(data=cerc_means, inherit.aes=F, aes(x=Competitor, y=Rate.Cercs)) + 
   geom_linerange(data=cerc_means, inherit.aes=F, aes(x=Competitor, ymin=Rate.Cercs - SE, ymax=Rate.Cercs + SE))
 
-
-pA
-
-
-
-
-
 pB = ggplot(data=output2, aes(x=C_size, y=Final_Length)) +
   theme(plot.margin = unit(c(0, 0.25, 0.75, 0.5), "cm")) + 
   theme(legend.position="none",
@@ -189,8 +182,6 @@ pB = ggplot(data=output2, aes(x=C_size, y=Final_Length)) +
   geom_line() +
   geom_point(data=L_means, inherit.aes=F, aes(x=Competitor, y=Final_Length)) + 
   geom_linerange(data=L_means, inherit.aes=F, aes(x=Competitor, ymin=Final_Length - SE, ymax=Final_Length + SE))
-
-
 
 pC = ggplot(data=output2, aes(x=C_size, y=Lifespan)) +
   theme(plot.margin = unit(c(0, 0.25, 0.75, 0.5), "cm")) + 
@@ -224,6 +215,6 @@ Fig1 = plot_grid(pA, pB, pC, align="v", ncol=1, nrow=3, axis="rltb", scale=1) +
   draw_label("Competitor size:", x = 0.75, y = 0.16, size=8, hjust=0.5) +
   draw_label("P = 0.003", x = 0.75, y = 0.14, size=8, hjust=0.5)
 
-save_plot("Fig1_SizeCompPreds.png", Fig1, ncol=1, nrow=3, base_height=2, base_aspect_ratio = 1.05, dpi=600, units="in")
+save_plot("Fig1_SizeComp.png", Fig1, ncol=1, nrow=3, base_height=2, base_aspect_ratio = 1.05, dpi=600, units="in")
 
 Fig1
