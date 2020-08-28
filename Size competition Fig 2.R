@@ -4,9 +4,14 @@ library(adaptMCMC)
 
 setwd("C:/RData")
 
-thin.int = 1000
-m = readRDS("Full_Fitting_Size_AR1.Rda") #$samples[seq(from=50001, to=200000, by=thin.int),c(1:25)]
-params = m$samples[which.max(m$log.p),]
+thin.int = 10000
+m = readRDS("Full_Fitting_SizeComp.Rda")$samples[seq(from=50001, to=250000, by=thin.int),c(1:25)]
+m2 = readRDS("Full_Fitting_SizeComp3.Rda")$samples[seq(from=50001, to=250000, by=thin.int),c(1:25)]
+m3 = readRDS("Full_Fitting_SizeComp4.Rda")$samples[seq(from=50001, to=250000, by=thin.int),c(1:25)]
+
+m = rbind(m, m2, m3)
+
+#params = m$samples[which.max(m$log.p),]
 
 
 # compile my model from C definition
@@ -32,14 +37,15 @@ experiment.events = function(initial.food){
 #Solves all deterministic DEB skeletons
 solve.DEB<-function(params, inits, duration, events){
   DEB.run <- as.data.frame(lsoda(inits, 28:duration, func = "derivs", dllname = "SizeCompModel_Shrink",
-                                 initfunc = "initmod",  nout=4, outnames=c("Survival", "LG", "Survival_C", "LGC"), params,  
-                                 rtol=1e-6, atol=1e-6, maxsteps=500000, events = list(data = events)))
+                                 initfunc = "initmod",  nout=4, outnames=c("Survival", "LG", "Survival_C", "LGC"), parms = params,  
+                                 rtol=1e-6, atol=1e-6, maxsteps=5e5, events = list(data = events)))
   DEB.run = subset(DEB.run, select=c("time", "L", "LG", "e", "RP", "RH", "Survival", "LGC", "RHC", "Survival_C"))
   DEB.run[,"Rtotal"] = DEB.run[,"RH"] + DEB.run[,"RHC"]
   result <- rbind(DEB.run)
   result
   
 }
+
 
 solve.DEBs<-function(parms, duration){
   result = matrix(nrow=0, ncol=11)
@@ -50,7 +56,7 @@ solve.DEBs<-function(parms, duration){
     params = c(iM=parms[1], k=parms[2], M=parms[3], EM=parms[4], Fh=parms[5], muD=parms[6],
                DR=parms[7], fe=parms[8], yRP=parms[9], ph=parms[10], yPE=parms[11], iPM=parms[12],
                eh=parms[13], mP=parms[14], alpha=parms[15], yEF=parms[25], LM=parms[17],
-               kd=parms[18], z=parms[19], kk=parms[20], hb=parms[21], theta=parms[22], mR=parms[23], yVE=parms[24], startage=28)
+               kR=parms[18], delta0=parms[19], hdelta=parms[20], hb=parms[21], theta=parms[22], mR=parms[23], yVE=parms[24], startage=28)
     inits = c(F = 10.78, L=3.98, e=0.9, D = as.numeric(params["DR"]/4), RH = 0, P = 2.85e-5, RP = 0, DAM=0, HAZ=0, LC=comp_size_vector[i], eC=0.9, DC=comp_D_vector[i], RHC=0, DAMC=0, HAZC=0)
     events = experiment.events(inits["F"])
     simulation = solve.DEB(params, inits, duration, events)
@@ -69,8 +75,8 @@ E.matrix = matrix(,nrow=0, ncol=16*6)
 S.matrix = matrix(,nrow=0, ncol=16*6)
 
 
-for(i in 1:length(m$samples[,1])){
-  pars = as.vector(data.frame(m$samples)[i,])
+for(i in 1:length(m[,1])){
+  pars = m[i,]
   results = solve.DEBs(pars, 133)
   L.matrix = rbind(L.matrix, results$LG)
   LC.matrix = rbind(LC.matrix, results$LGC)
@@ -114,17 +120,17 @@ solve.DEBs<-function(parms, duration){
     params = c(iM=parms[1], k=parms[2], M=parms[3], EM=parms[4], Fh=parms[5], muD=parms[6],
                DR=parms[7], fe=parms[8], yRP=parms[9], ph=parms[10], yPE=parms[11], iPM=parms[12],
                eh=parms[13], mP=parms[14], alpha=parms[15], yEF=parms[25], LM=parms[17],
-               kd=parms[18], z=parms[19], kk=parms[20], hb=parms[21], theta=parms[22], mR=parms[23], yVE=parms[24], startage=28)
-    inits = c(F = 10.78, L=3.98, e=0.6, D = as.numeric(params["DR"]/4), RH = 0, P = 0, RP = 0, DAM=0, HAZ=0, LC=comp_size_vector[i], eC=0.6, DC=comp_D_vector[i], RHC=0, DAMC=0, HAZC=0)
+               kR=parms[18], delta0=parms[19], hdelta=parms[20], hb=parms[21], theta=parms[22], mR=parms[23], yVE=parms[24], startage=28)
+    inits = c(F = 10.78, L=3.98, e=0.9, D = as.numeric(params["DR"]/4), RH = 0, P = 0, RP = 0, DAM=0, HAZ=0, LC=comp_size_vector[i], eC=0.9, DC=comp_D_vector[i], RHC=0, DAMC=0, HAZC=0)
     events = experiment.events(inits["F"])
     events = subset(events, var == "F")
     simulation = solve.DEB(params, inits, duration, events)
-    #simulation[which(simulation$time == 56), "Survival"] = 1
     result = rbind(result, simulation)
   }
   result = subset(result, time%%7==0)
   result
 }
+
 
 L.matrix = matrix(,nrow=0, ncol=16*6)
 LC.matrix = matrix(,nrow=0, ncol=16*6)
@@ -133,8 +139,8 @@ E.matrix = matrix(,nrow=0, ncol=16*6)
 S.matrix = matrix(,nrow=0, ncol=16*6)
 
 
-for(i in 1:length(m$samples[,1])){
-  pars = as.vector(data.frame(m$samples)[i,])
+for(i in 1:length(m[,1])){
+  pars = m[i,]
   results = solve.DEBs(pars, 133)
   L.matrix = rbind(L.matrix, results$LG)
   LC.matrix = rbind(LC.matrix, results$LGC)
@@ -278,10 +284,10 @@ p3 =   ggplot(data=subset(snail_summary.Inf, !is.nan(Length_C) & is.finite(Lengt
   xlim(c(0, 16)) +   labs(x="", y="") + 
   geom_point(size=1) + 
   geom_linerange(aes(ymin=Length_C-Length_C_SE, ymax=Length_C + Length_C_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  scale_color_manual(values=c("#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
   geom_ribbon(aes(x=Week, ymin=LC_L, ymax=LC_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
   geom_line(aes(x=Week, y=LC, group=Color, color=Color)) +
-  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
+  scale_fill_manual(values=c("#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p4 = ggplot(data=subset(snail_summary.Un, !is.nan(Length_C) & is.finite(Length_C)), aes(x=Week, y=Length_C, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))  +  theme(axis.text = element_text(size=10)) + 
@@ -291,10 +297,10 @@ p4 = ggplot(data=subset(snail_summary.Un, !is.nan(Length_C) & is.finite(Length_C
   xlim(c(0, 16)) +   labs(x="", y="") + 
   geom_point(size=1) + 
   geom_linerange(aes(ymin=Length_C-Length_C_SE, ymax=Length_C + Length_C_SE)) +
-  scale_color_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
+  scale_color_manual(values=c("#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061")) +
   geom_ribbon(aes(x=Week, ymin=LC_L, ymax=LC_H, group=Color, color=NULL, fill=factor(Color)), alpha=0.3)  +
   geom_line(aes(x=Week, y=LC, group=Color, color=Color)) +
-  scale_fill_manual(values=c("#67001f","#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
+  scale_fill_manual(values=c("#4393c3", "#b2182b", "#2166ac", "#f4a582",  "#053061"), name="fill")
 
 p5 = ggplot(subset(snail_summary.Inf, Week >= 4), aes(x=Week, y=Survival, group=Color, color=factor(Color))) +
   theme(plot.margin = unit(c(0, 0, 0, 0), "cm"))   +  theme(axis.text = element_text(size=10)) +
@@ -364,13 +370,13 @@ Fig1 = plot_grid(spacer, spacer, spacer,spacer,
   draw_label("F", x = 0.6, y = 0.465) +
   draw_label("G", x = 0.15, y = 0.25) +
   # fit statistics
-  # draw_label(expression(paste(r[c], " = 0.95")), x=0.45, y=0.78, size=10)+
-  # draw_label(expression(paste(r[c], " = 0.97")), x=0.92, y=0.78, size=10)+
-  # draw_label(expression(paste(r[c], " = 0.71")), x=0.47, y=0.73, size=10)+
-  # draw_label(expression(paste(r[c], " = 0.93")), x=0.9, y=0.73, size=10)+
-  # draw_label("AUC = 0.87", x=0.25, y=0.3, size=10)+
-  # draw_label("AUC = 0.77", x=0.7, y=0.3, size=10)+
-  # draw_label(expression(paste(r[c], " = 0.97")), x=0.47, y=0.06, size=10)+
+  draw_label(expression(paste(r[c], " = 0.92")), x=0.45, y=0.78, size=10)+
+  draw_label(expression(paste(r[c], " = 0.92")), x=0.92, y=0.78, size=10)+
+  draw_label(expression(paste(r[c], " = 0.96")), x=0.47, y=0.73, size=10)+
+  draw_label(expression(paste(r[c], " = 0.91")), x=0.9, y=0.73, size=10)+
+  draw_label("AUC = 0.89", x=0.25, y=0.3, size=10)+
+  draw_label("AUC = 0.66", x=0.7, y=0.3, size=10)+
+  draw_label(expression(paste(r[c], " = 0.92")), x=0.47, y=0.06, size=10)+
   # legend
   draw_label("Competitor size, mm", x=0.78, y=0.23, size=11)+
   draw_label(".", x=0.75, y=0.20, size=28, colour="#67001f")+ draw_label("None", x=0.77, y=0.20, size=10, hjust=0)+ # Alt+0149 for bullet point
@@ -380,3 +386,4 @@ Fig1 = plot_grid(spacer, spacer, spacer,spacer,
   draw_label(".", x=0.75, y=0.12, size=28, colour="#2166ac")+ draw_label("12-15", x=0.77, y=0.12, size=10, hjust=0)+
   draw_label(".", x=0.75, y=0.10, size=28, colour="#053061")+ draw_label(">15", x=0.77, y=0.10, size=10, hjust=0)
 save_plot("Fig2_SizeComp.png", Fig1, ncol=2, nrow=4, base_height=2, base_aspect_ratio = 1.1, dpi=600, units="in")
+
