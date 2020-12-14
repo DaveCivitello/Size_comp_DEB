@@ -4,20 +4,16 @@ library(adaptMCMC)
 
 setwd("C:/RData")
 
-# Highest posterior density
-m = readRDS("FullStarve_SR_adaptMCMC3.Rda")
-params = m$samples[which.max(m$log.p),]
+thin.int = 10000
+m = readRDS("Full_Fitting_SizeComp.Rda")$samples[seq(from=50001, to=250000, by=thin.int),c(1:25)]
+m2 = readRDS("Full_Fitting_SizeComp3.Rda")$samples[seq(from=50001, to=250000, by=thin.int),c(1:25)]
+m3 = readRDS("Full_Fitting_SizeComp4.Rda")$samples[seq(from=50001, to=250000, by=thin.int),c(1:25)]
 
-# Thinned chains
-thin.int = 1000
-m = readRDS("FullStarve_SR_adaptMCMC2.Rda")$samples[seq(from=50001, to=200000, by=thin.int),c(1:25)]
-m2 = readRDS("FullStarve_SR_adaptMCMC3.Rda")$samples[seq(from=50001, to=200000, by=thin.int),c(1:25)]
-m3 = readRDS("FullStarve_SR_adaptMCMC4.Rda")$samples[seq(from=50001, to=200000, by=thin.int),c(1:25)]
 m = rbind(m, m2, m3)
 
 # compile my model from C definition
 dyn.unload("SizeCompModel_Shrink.dll") # unload dll
-system("R CMD SHLIB SizeCompModel_Shrink.c")
+# system("R CMD SHLIB SizeCompModel_Shrink.c")
 dyn.load("SizeCompModel_Shrink.dll") # Load dll
 
 # Lines up events
@@ -371,13 +367,13 @@ Fig1 = plot_grid(spacer, spacer, spacer,spacer,
   draw_label("F", x = 0.6, y = 0.465) +
   draw_label("G", x = 0.15, y = 0.25) +
   # fit statistics
-  draw_label(expression(paste(r[c], " = 0.92")), x=0.45, y=0.78, size=10)+
+  draw_label(expression(paste(r[c], " = 0.91")), x=0.45, y=0.78, size=10)+
   draw_label(expression(paste(r[c], " = 0.92")), x=0.92, y=0.78, size=10)+
-  draw_label(expression(paste(r[c], " = 0.95")), x=0.47, y=0.73, size=10)+
-  draw_label(expression(paste(r[c], " = 0.89")), x=0.9, y=0.73, size=10)+
-  draw_label("AUC = 0.88", x=0.25, y=0.3, size=10)+
-  draw_label("AUC = 0.66", x=0.7, y=0.3, size=10)+
-  draw_label(expression(paste(r[c], " = 0.88")), x=0.47, y=0.06, size=10)+
+  draw_label(expression(paste(r[c], " = 0.96")), x=0.47, y=0.73, size=10)+
+  draw_label(expression(paste(r[c], " = 0.91")), x=0.9, y=0.73, size=10)+
+  draw_label("AUC = 0.89", x=0.25, y=0.3, size=10)+
+  draw_label("AUC = 0.64", x=0.7, y=0.3, size=10)+
+  draw_label(expression(paste(r[c], " = 0.96")), x=0.47, y=0.06, size=10)+
   # legend
   draw_label("Competitor size, mm", x=0.78, y=0.23, size=11)+
   draw_label("•", x=0.75, y=0.20, size=28, colour="#67001f")+ draw_label("None", x=0.77, y=0.20, size=10, hjust=0)+ # Alt+0149 for bullet point
@@ -386,5 +382,5 @@ Fig1 = plot_grid(spacer, spacer, spacer,spacer,
   draw_label("•", x=0.75, y=0.14, size=28, colour="#4393c3")+ draw_label("8", x=0.77, y=0.14, size=10, hjust=0)+
   draw_label("•", x=0.75, y=0.12, size=28, colour="#2166ac")+ draw_label("12-15", x=0.77, y=0.12, size=10, hjust=0)+
   draw_label("•", x=0.75, y=0.10, size=28, colour="#053061")+ draw_label(">15", x=0.77, y=0.10, size=10, hjust=0)
-save_plot("Fig2_SizeComp.png", Fig1, ncol=2, nrow=4, base_height=2, base_aspect_ratio = 1.1, dpi=600, units="in")
+save_plot("Fig3_SizeComp.png", Fig1, ncol=2, nrow=4, base_height=2, base_aspect_ratio = 1.1, dpi=600, units="in")
 
